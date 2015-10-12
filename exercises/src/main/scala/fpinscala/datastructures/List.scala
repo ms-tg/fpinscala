@@ -1,5 +1,7 @@
 package fpinscala.datastructures
 
+import scala.annotation.tailrec
+
 sealed trait List[+A] // `List` data type, parameterized on a type, `A`
 case object Nil extends List[Nothing] // A `List` data constructor representing the empty list
 /* Another data constructor, representing nonempty lists. Note that `tail` is another `List[A]`,
@@ -62,7 +64,45 @@ object List { // `List` companion object. Contains functions for creating and wo
 
   def length[A](l: List[A]): Int = sys.error("todo")
 
-  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = sys.error("todo")
+  @tailrec
+  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B =
+    l match {
+      case Nil => z
+      case Cons(x, xs) => foldLeft(xs, f(z, x))(f)
+    }
 
   def map[A,B](l: List[A])(f: A => B): List[B] = sys.error("todo")
+
+
+  /** Exercise 3.13
+    *
+    * _Hard_: Can you write `foldLeft` in terms of `foldRight`?
+    *
+    * [Nicole] the relevant Haskell is:
+    *
+    *   foldl f z xs = foldr step id xs z
+    *   where step x g a = g (f a x)
+    *
+    * [Marc] What this is saying is to "accumulate a function" in
+    * the `foldRight`, which when called, will be the result of foldLeft.
+    */
+  def foldLeftInTermsOfFoldRight[A,B](l: List[A], z: B)(f: (B, A) => B): B = {
+    // the type we will accumulate
+    type Acc = B => B
+
+    // initial value (param `z`) for foldRight, of the Acc type
+    def initial: Acc = identity // aka (x => x), discuss this
+
+    // function (param `f`) for foldRight, which builds the Acc type
+    def step(a_right: A, acc: Acc): Acc = (b_left: B) => acc(f(b_left, a_right))
+
+    // accumulates a function:
+    //   Nil           => b => b       // identity
+    //   List(1)       => b => f(b, 1)
+    //   List(1, 2)    => b => f(f(b, 1), 2)
+    //   List(1, 2, 3) => b => f(f(f(b, 1), 2), 3)
+    val g = foldRight(l, initial)(step)
+
+    g(z)
+  }
 }
